@@ -28,6 +28,12 @@ Notes from using an AI agent on a real Archicad 30 project (macOS) through the J
 - Identify the combination a layout really uses by what is visible on it (e.g. a layer that is shown there and hidden in the other candidate), before changing anything.
 - After model changes, a drawing on a layout may show blank until updated: Tapir `UpdateDrawings`.
 
+## Changing geometry
+
+- `ACAPI_Element_Edit` with `APIEdit_Stretch` did nothing on whole-element neigs, nor on the selection with a marquee set through the API (Archicad 30): no error, no change. The DevKit example stretches *node* neigs picked by clicking.
+- What works without user input: Tapir `ModifyMorphs` with a new `body` (read it with `GetDetailsOfElements`, move the vertices in world coordinates = origin + local, keep faces/surfaces), `ModifySlabs` with a new `polygonOutline`, `SetDetailsOfElements` for wall begin/end points, and Tapir `SetGDLParametersOfElements` for an object's A/B (ClaudeTools `SetGDLParams` ignores A and B, which are element fields). One rule applied to every point (e.g. x ≤ a → x−dx) reproduces a marquee stretch exactly.
+- Save the geometry of everything you touch first (JSON), test on one element, check the bounding boxes against the expected numbers, then run the rest.
+
 ## Texts and notes
 
 - `CreateTexts` (ClaudeTools) places the text by its **centre** and in the tool's default style (it can be bold). Fix with Tapir `ModifyTexts`: `style: {bold:false, anchor:"LeftBottom", height}` and `coordinate`.
