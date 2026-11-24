@@ -1,0 +1,35 @@
+# <Project name> — Archicad 30
+
+Project file: `<name>.pln` (this folder). Answer in <language>, concisely.
+
+## Working rules
+- **Never save the project** (SaveProject / SaveProjectAs) without explicit approval.
+- **No Undo through the API**: test on one element, check, then batch. Save the data of what you change (JSON) so it can be rebuilt (`RebuildDimension`).
+- **Hidden layers**: show temporarily (Tapir `CreateLayers`, `overwriteExisting:true`), hide again at the end.
+- Before/after captures in `<folder>/` (Tapir `SaveCurrentWindowAsImage`, framed with `ChangeWindow` + `SetZoom`).
+- When an instruction is ambiguous (absolute vs relative level, paper vs model units), ask before changing anything.
+
+## Connection
+- Archicad JSON API on port **19723**; add-on **ClaudeTools**; MCP server **arquiteto-ndc** (`mcp__arquiteto-ndc__<Command>`, `{params, output_file?}`); Tapir for preferences, associative/level dimensions, texts.
+- Sections/elevations: `useFloorPlanDatabase:false` + `db:{type,guid}` (from `ListDatabases`).
+
+## Project data
+- ±0.00 = <what> = <altitude> (source: <survey>). Reference level 1: <name> at <value>.
+- Stories: <list with levels>.
+- Scales: plan 1:<n>; sections <list>.
+- Dimension layers: <index (name)>; hidden: <list>.
+- Floor layers: <finished floor>, <exterior>, <structure>.
+
+## Drawing conventions
+- Decimal separator in dimensions: <point/comma>.
+- Witness lines <8> mm on paper (form 3 "Fix", `val = L·scale/1000 − 0.0935` m).
+- Figures and texts never on lines; same height as dimension figures; not bold.
+- Clear space: ≥ 1 text height between stacked texts, ≥ 0.6 text heights to any line.
+
+## Glossary (<your language> ↔ Archicad)
+- cota / cadeia de cotas → Dimension (linear)
+- cota altimétrica (corte/alçado) → Dimension, appearance *Elevation*
+- cota de nível (planta) → Level Dimension
+- linha de chamada → witness line
+- soleira → threshold; pavimento acabado → finished floor
+- planta / corte / alçado / folha de trabalho → floor plan / section / elevation / worksheet

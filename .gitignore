@@ -1,0 +1,7 @@
+Build/
+build/
+*.bundle
+*.apx
+__pycache__/
+scripts/data/*.json
+.DS_Store

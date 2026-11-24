@@ -1,0 +1,13 @@
+#include "MDIDs_APICD.h"
+
+/* Register your own Developer ID and Local ID at https://archicadapi.graphisoft.com
+   and put them here: Archicad only loads add-ons signed with the registering user's MDID. */
+'MDID' 32500 "Add-On Identifier" {
+	1111111111	/* your Developer ID */
+	2222222222	/* your Local ID */
+}
+
+'STR#' 32000 "Add-on Name and Description" {
+/* [  1] */		"Claude Tools"
+/* [  2] */		"JSON commands (namespace ClaudeTools) for AI agents: dimensions, drafting, element properties, solid operations, trims, drawings, layers."
+}

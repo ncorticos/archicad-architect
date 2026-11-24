@@ -1,0 +1,13 @@
+{
+    "addOnName": "ClaudeTools",
+    "defaultLanguage": "INT",
+    "languages": [
+        "INT"
+    ],
+    "version": "2.4.0",
+    "copyright": {
+        "name": "Nuno Dinis Corticos",
+        "year": "%Y"
+    },
+    "description": "JSON commands (namespace ClaudeTools) for AI agents working in Archicad"
+}
