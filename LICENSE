@@ -21,5 +21,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Archicad is a trademark of GRAPHISOFT SE. This project is not affiliated with
-or endorsed by GRAPHISOFT. The Archicad API Development Kit and the add-on
-build tools are not included and are subject to GRAPHISOFT's own terms.
+or endorsed by GRAPHISOFT. The Archicad API Development Kit is not included: the
+build downloads it from GRAPHISOFT under GRAPHISOFT's own terms. addon/Tools is a
+git submodule pointing to GRAPHISOFT/archicad-addon-cmake-tools. The project
+layout and addon/Src/APIEnvir.h come from GRAPHISOFT/archicad-addon-cmake
+(MIT License, Copyright (c) GRAPHISOFT SE).

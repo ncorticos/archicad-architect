@@ -1,0 +1,4 @@
+'STR#' 32000 "Add-on Name and Description" {
+/* [  1] */		"Claude Tools"
+/* [  2] */		"JSON commands (namespace ClaudeTools) for AI agents: dimensions, drafting, element properties, solid operations, trims, drawings, layers."
+}

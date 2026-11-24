@@ -5,3 +5,5 @@ build/
 __pycache__/
 scripts/data/*.json
 .DS_Store
+local.json
+addon/RFIX/ClaudeToolsFix.grc

@@ -1,0 +1,8 @@
+#include "MDIDs_APICD.h"
+
+/* Template: setup.py writes ClaudeToolsFix.grc from this file with YOUR Developer ID and Local ID
+   (free registration at https://archicadapi.graphisoft.com). */
+'MDID' 32500 "Add-On Identifier" {
+	@DEVELOPER_ID@
+	@LOCAL_ID@
+}

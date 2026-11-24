@@ -5,7 +5,7 @@
 
 #include "APIEnvir.h"
 #include "ACAPinc.h"
-#include "APICommon.h"
+#include "RS.hpp"
 #include "ObjectState.hpp"
 #include "Location.hpp"
 

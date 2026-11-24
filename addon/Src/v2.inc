@@ -364,7 +364,7 @@ GS::ObjectState Set3DCamera (const GS::ObjectState& p)
 	pi.u.persp.cameraZ = Num (p, "cameraZ", pi.u.persp.cameraZ); pi.u.persp.targetZ = Num (p, "targetZ", pi.u.persp.targetZ);
 	pi.u.persp.viewCone = Num (p, "viewCone", pi.u.persp.viewCone);
 	double dx = pi.u.persp.target.x - pi.u.persp.pos.x, dy = pi.u.persp.target.y - pi.u.persp.pos.y;
-	pi.u.persp.azimuth = atan2 (dy, dx) * 180.0 / PI; pi.u.persp.distance = sqrt (dx * dx + dy * dy);
+	pi.u.persp.azimuth = atan2 (dy, dx) * 180.0 / 3.14159265358979323846; pi.u.persp.distance = sqrt (dx * dx + dy * dy);
 	e = ACAPI_View_Change3DProjectionSets (&pi);
 	if (e != NoError) return Err (e, "Set projection failed");
 	return GS::ObjectState ("success", true);

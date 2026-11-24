@@ -10,27 +10,34 @@ It is a companion to [Tapir](https://github.com/ENZYME-APD/tapir-archicad-automa
 
 | Folder | What |
 |---|---|
-| `addon/` | **ClaudeTools** Archicad add-on (C++, DevKit 30). 50 JSON commands in the namespace `ClaudeTools`, called through the Archicad JSON API (`API.ExecuteAddOnCommand`). |
+| `addon/` | **ClaudeTools** Archicad add-on (C++, DevKit 30), laid out like GRAPHISOFT's [archicad-addon-cmake](https://github.com/GRAPHISOFT/archicad-addon-cmake) template; build tools as a git submodule. 50 JSON commands in the namespace `ClaudeTools`, called through the Archicad JSON API (`API.ExecuteAddOnCommand`). |
 | `mcp/` | **arquiteto-ndc** MCP server (Python, one file). One MCP tool per add-on command, read from the add-on source, plus `batch`. Keeps one connection to Archicad (~20 ms per call). |
+| `setup.py` | One-command setup for each user: your MDID, DevKit download, build, install, MCP entry. |
 | `client/ct.py` | Minimal command-line client: `python3 client/ct.py Ping '{}'`. |
 | `scripts/` | Batch jobs built on top: move dimension texts off lines (`dimfix.py`), witness lines to a fixed paper length (`witfix.py`), switch elevation marks to a reference level (`elevfix.py`), write "±0.00 = altitude" next to the zero marks with clear space (`zeronote.py`). `export_data.py` writes the project data they need. |
 | `docs/LESSONS.md` | What we learned the hard way (no Undo, dimension points that vanish, calibration of witness lines, sandbox, MCP versions...). **Read it before running anything in batch.** |
 | `docs/CLAUDE.md.example` | Template of project instructions for Claude Code (working rules, drawing conventions, glossary pt-PT/en). |
 
-## Quick start
+## Quick start (students: start here)
 
-1. **Build the add-on** (needs Xcode/Visual Studio, CMake, Python, the [Archicad 30 API DevKit](https://archicadapi.graphisoft.com)):
-   - Copy `Tools/` from GRAPHISOFT's [archicad-addon-cmake](https://github.com/GRAPHISOFT/archicad-addon-cmake) template into `addon/`, and `APIEnvir.h`, `APICommon.h`, `APICommon.c` from the DevKit examples into `addon/Src/`.
-   - Put **your own** MDID (Developer ID + Local ID, free registration on archicadapi.graphisoft.com) in `addon/RFIX/ClaudeToolsFix.grc`. Archicad only loads add-ons signed with the MDID of the user who registered it.
-   - `cmake -B Build -DAC_API_DEVKIT_DIR=/path/to/DevKit30/Support addon && cmake --build Build --config RelWithDebInfo`
-   - Copy the built `ClaudeTools.bundle` (macOS) / `.apx` (Windows) into Archicad's Add-Ons folder with Archicad **closed**, then start Archicad. Check: `python3 client/ct.py Ping '{}'` answers with the version and the command list.
-2. **Register the MCP server** (needs [uv](https://docs.astral.sh/uv/)). Claude Desktop / Claude Code desktop: add to `claude_desktop_config.json`
-   ```json
-   "arquiteto-ndc": { "command": "/path/to/uv", "args": ["run", "--script", "/path/to/archicad-architect/mcp/server.py"] }
+You need: **Archicad 30**, **Python 3**, **git**, **CMake**, and **Xcode** (macOS) or **Visual Studio 2022 with "Desktop development with C++"** (Windows), plus **[uv](https://docs.astral.sh/uv/)** for the MCP server and a Claude app (Claude Desktop or Claude Code).
+
+1. **Register your free Add-On ID** at [archicadapi.graphisoft.com](https://archicadapi.graphisoft.com) (Profile → Add-On ID). You get a *Developer ID* and a *Local ID*. Archicad only loads add-ons built with the ID of the person who registered it, so everyone uses their own.
+2. **Get the code** (with the build tools submodule):
+   ```bash
+   git clone --recurse-submodules https://github.com/ncorticos/archicad-architect.git
+   cd archicad-architect
    ```
-   Claude Code CLI: `claude mcp add arquiteto-ndc -- uv run --script /path/to/archicad-architect/mcp/server.py`
-3. **Permissions** (Claude Code `settings.json`): allow `mcp__arquiteto-ndc__*`, and keep `SaveProject`, `SaveProjectAs` and `DeleteElements` on `ask`. The server itself refuses to save unless `user_approved: true` is passed.
-4. Copy `docs/CLAUDE.md.example` to your project folder as `CLAUDE.md` and fill in your project's data.
+3. **Close Archicad** and run the setup. It asks for your two IDs and your Archicad Add-Ons folder (*Extensões* in the Portuguese version), downloads the Archicad 30 API DevKit, builds and installs the add-on, and prints the MCP entry:
+   ```bash
+   python3 setup.py --write-mcp-config
+   ```
+   (Windows: `py setup.py --write-mcp-config`.) Your answers are kept in `local.json`, which is never shared. Run single steps with `--only tools|mdid|build|install|mcp`; use your own DevKit with `--devkit <folder> --devkit-build <n>`.
+4. **Start Archicad**, open a project, then check: `python3 client/ct.py Ping '{}'` → it answers with the version and the 50 commands.
+5. **Restart the Claude app.** The tools appear as `arquiteto-ndc`. In Claude Code, allow `mcp__arquiteto-ndc__*` and keep `SaveProject`, `SaveProjectAs` and `DeleteElements` on *ask* (`settings.json` → `permissions`).
+6. Copy `docs/CLAUDE.md.example` into your project folder as `CLAUDE.md`, fill in your project's data, and start Claude in that folder.
+
+**Do it by hand instead:** `python3 addon/Tools/BuildAddOn.py -c addon/config.json -v 30` (after writing `addon/RFIX/ClaudeToolsFix.grc` from the `.in` template), then copy `addon/Build/ClaudeTools/30/INT/RelWithDebInfo/ClaudeTools.bundle` (or `.apx`) into the Add-Ons folder. Claude Code CLI: `claude mcp add arquiteto-ndc -- uv run --script /path/to/archicad-architect/mcp/server.py`.
 
 Environment variables of the server: `CLAUDETOOLS_PORT` (default 19723), `CLAUDETOOLS_HOST`, `CLAUDETOOLS_TIMEOUT`, `CLAUDETOOLS_SRC`.
 
@@ -103,9 +110,18 @@ In sections, elevations and layouts pass `useFloorPlanDatabase: false` and `db: 
 - **Dimension points bound to Openings or section elements** are dropped or refused when the dimension is changed: rebuild the dimension with static points (`RebuildDimension`).
 - Look at the result: capture the window before and after (Tapir `SaveCurrentWindowAsImage`).
 
-## Em português
+## Em português (para alunos)
 
-Ferramentas para um agente de IA (Claude Code ou qualquer cliente MCP) trabalhar dentro do Archicad 30 como assistente de arquiteto: corrigir cotas, linhas de chamada, cotas altimétricas e de nível, desenhar, editar elementos e colocar notas sem sobrepor texto a linhas. O add-on **ClaudeTools** traz os comandos que faltam à API; o servidor MCP **arquiteto-ndc** expõe-nos ao agente; os scripts e o `docs/LESSONS.md` resumem o que se aprendeu num projeto real. Regras de ouro: a API não tem *Desfazer*, testa-se sempre numa só peça, nunca se grava sem aprovação.
+Ferramentas para um agente de IA (Claude Code, Claude Desktop ou outro cliente MCP) trabalhar dentro do Archicad 30 como assistente de arquiteto: corrigir cotas, linhas de chamada, cotas altimétricas e de nível, desenhar, editar elementos e colocar notas sem sobrepor texto a linhas.
+
+**Instalação:**
+1. Registem o vosso *Add-On ID* gratuito em archicadapi.graphisoft.com (cada um usa o seu: o Archicad só carrega add-ons com o ID de quem o registou).
+2. `git clone --recurse-submodules https://github.com/ncorticos/archicad-architect.git`
+3. Com o Archicad **fechado**: `python3 setup.py --write-mcp-config`. O script pede os vossos IDs e a pasta *Extensões* do Archicad 30, descarrega o DevKit, compila, instala e regista o servidor MCP `arquiteto-ndc`. Os vossos dados ficam em `local.json`, que não é partilhado.
+4. Abram o Archicad e reiniciem a app do Claude.
+5. Copiem `docs/CLAUDE.md.example` para a pasta do vosso projeto como `CLAUDE.md` e preencham-no.
+
+**Regras de ouro:** a API não tem *Desfazer*; testem sempre numa só peça antes de aplicar em lote; nunca gravem sem rever; leiam o `docs/LESSONS.md`.
 
 ## Credits
 
