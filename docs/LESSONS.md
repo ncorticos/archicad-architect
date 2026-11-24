@@ -20,6 +20,14 @@ Notes from using an AI agent on a real Archicad 30 project (macOS) through the J
 - **Reference level** (Project Preferences): check what the finished floor really is before choosing it. Sum areas per top level, not counts: in our case 105 tiny pieces at +0.10 hid a 291 m² finished floor at 0.00.
 - **"Terrain level"** is ambiguous (absolute altitude vs. relative to ±0.00): ask. Check the Archicad project altitude against the survey (thresholds, spot heights): ours was about 1 m off.
 
+## Story visibility and layer combinations
+
+- **`ACAPI_ELEMENT_MASK_SET` marks only the first byte of a field.** For struct fields such as `API_StoryVisibility` (slab `visibilityCont`/`visibilityFill`, morph `showContour`/`showFill`, object/wall/column/beam `visibility`) only `showOnHome` gets marked and Archicad silently ignores `showRelAbove` & co.: `ACAPI_Element_Change` returns NoError and nothing changes. Mark the whole struct (`memset` of the mask field with 0xFF) and read the element back to report what was really stored. `SetStoryVisibility` does both.
+- Elements below the story (a buried tank on story −1) shown "one story up": slabs work once the mask is right; **morphs also need `viewDepthLimitation = EntireElement`**, or the Floor Plan Cut Plane (bottom = current story) hides them. Library objects kept their visibility in our test.
+- **"It does not appear on the layout"**: check the layer combination of the *view* placed on the layout, not just the model. Get the view settings (Tapir `GetViewSettings` on the View Map items) and the combination (`GetLayerCombinations`); the layers are referenced by attribute GUID, map them with `GetAttributesByType`. Change one layer in a combination with `CreateLayerCombinations`, `overwriteExisting: true` and only that layer listed: the others keep their state. Our tank sat on an MEP layer hidden in the drawing's combination.
+- Identify the combination a layout really uses by what is visible on it (e.g. a layer that is shown there and hidden in the other candidate), before changing anything.
+- After model changes, a drawing on a layout may show blank until updated: Tapir `UpdateDrawings`.
+
 ## Texts and notes
 
 - `CreateTexts` (ClaudeTools) places the text by its **centre** and in the tool's default style (it can be bold). Fix with Tapir `ModifyTexts`: `style: {bold:false, anchor:"LeftBottom", height}` and `coordinate`.

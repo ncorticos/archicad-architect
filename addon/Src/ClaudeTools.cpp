@@ -698,10 +698,10 @@ GS::ObjectState SetTextBackground (const GS::ObjectState& p)
 // {} -> list of available commands
 GS::ObjectState Ping (const GS::ObjectState&)
 {
-	GS::ObjectState r ("addOn", GS::UniString ("ClaudeTools"), "version", GS::UniString ("2.4.0"));
+	GS::ObjectState r ("addOn", GS::UniString ("ClaudeTools"), "version", GS::UniString ("2.5.1"));
 	GS::Array<GS::UniString> cmds = { "Ping", "CreateSolidLinks", "RemoveSolidLinks", "GetSolidLinks",
 		"TrimElements", "RemoveTrim", "GetTrims", "FlipOpenings", "Rebuild", "SetWallTextureAlign",
-		"CreateTexts", "CreateDimensions", "SetLayerInCombinations", "MoveToLayer", "DeleteElements", "FarElements", "GetDrawing", "SetDrawingFrame", "ListPens", "CreateHatches", "SetTextBackground", "ZoomToElements", "SelectElements", "ShowIn3D", "SetElementProps", "GetPolygon", "SetMeshPointHeights", "TransformElements", "CreateLines", "CreateObject", "SetGDLParams", "Get3DCamera", "Set3DCamera", "SetDrawingProps", "SaveProject", "GetElementInfo", "SetDrawOrder", "FindElements", "CopyElementSettings", "GetRoof", "SetRoof", "SetPolygon", "SaveProjectAs", "RenderImage", "ListDatabases", "GetDimensions", "GetDrawnSegments", "SetDimensionNotes", "SetDimensionWitness", "RebuildDimension" };
+		"CreateTexts", "CreateDimensions", "SetLayerInCombinations", "MoveToLayer", "DeleteElements", "FarElements", "GetDrawing", "SetDrawingFrame", "ListPens", "CreateHatches", "SetTextBackground", "ZoomToElements", "SelectElements", "ShowIn3D", "SetElementProps", "GetPolygon", "SetMeshPointHeights", "TransformElements", "CreateLines", "CreateObject", "SetGDLParams", "Get3DCamera", "Set3DCamera", "SetDrawingProps", "SaveProject", "GetElementInfo", "SetDrawOrder", "FindElements", "CopyElementSettings", "GetRoof", "SetRoof", "SetPolygon", "SaveProjectAs", "RenderImage", "ListDatabases", "GetDimensions", "GetDrawnSegments", "SetDimensionNotes", "SetDimensionWitness", "RebuildDimension", "GetStoryVisibility", "SetStoryVisibility" };
 	r.Add ("commands", cmds);
 	return r;
 }
@@ -775,6 +775,8 @@ GSErrCode Initialize (void)
 		{ "SetDimensionNotes", v3::SetDimensionNotes },
 		{ "SetDimensionWitness", v3::SetDimensionWitness },
 		{ "RebuildDimension", v3::RebuildDimension },
+		{ "GetStoryVisibility", v3::GetStoryVisibility },
+		{ "SetStoryVisibility", v3::SetStoryVisibility },
 	};
 	GSErrCode err = NoError;
 	for (auto& c : cmds) {

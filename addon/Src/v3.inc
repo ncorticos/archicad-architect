@@ -413,4 +413,108 @@ GS::ObjectState RebuildDimension (const GS::ObjectState& p)
 	return GS::ObjectState ("newGuid", APIGuidToString (newG), "points", after, "oldDeleted", after == (Int32) pts.GetSize ());
 }
 
+// ---------------------------------------------------------------------------
+// Story visibility ("Show on stories") of slabs, meshes, morphs, objects, lamps, walls, columns, beams.
+// GetStoryVisibility { elements:[guid] } -> per element the current settings
+// SetStoryVisibility { elements:[guid], showOnHome?, showAllAbove?, showAllBelow?, showRelAbove?:int, showRelBelow?:int,
+//                      viewDepth?:"entire"|"range"|"absolute" (morphs) }  -> "stored" = what Archicad kept
+//   Only the given fields change; automatic ("all relevant stories") visibility is switched off.
+static GS::ObjectState VisToOS (const API_StoryVisibility& v)
+{
+	return GS::ObjectState ("showOnHome", v.showOnHome, "showAllAbove", v.showAllAbove, "showAllBelow", v.showAllBelow,
+		"showRelAbove", (Int32) v.showRelAbove, "showRelBelow", (Int32) v.showRelBelow);
+}
+
+static void ApplyVis (API_StoryVisibility& v, const GS::ObjectState& p)
+{
+	bool b; Int32 n;
+	if (p.Get ("showOnHome", b))   v.showOnHome = b;
+	if (p.Get ("showAllAbove", b)) v.showAllAbove = b;
+	if (p.Get ("showAllBelow", b)) v.showAllBelow = b;
+	if (p.Get ("showRelAbove", n)) v.showRelAbove = (short) n;
+	if (p.Get ("showRelBelow", n)) v.showRelBelow = (short) n;
+}
+
+// ACAPI_ELEMENT_MASK_SET marks only the first byte of a field: for struct fields
+// (API_StoryVisibility) every byte must be marked, or Archicad ignores the sub-fields.
+#define CT_MASK_FULL(rec,typ,varnam) memset (&(((typ *) &rec)->varnam), 0xFF, sizeof (((typ *) &rec)->varnam))
+
+static GS::ObjectState StoryVisibility (const GS::ObjectState& p, bool write)
+{
+	GS::Array<API_Guid> gs = GuidList (p, "elements");
+	GS::ObjectState r;
+	auto list = r.AddList<GS::ObjectState> ("elements");
+	for (const auto& g : gs) {
+		API_Element el {}; el.header.guid = g;
+		GSErrCode e = ACAPI_Element_Get (&el);
+		GS::UniString tn; ACAPI_Element_GetElemTypeName (el.header.type, tn);
+		GS::ObjectState one ("guid", APIGuidToString (g), "type", tn);
+		if (e != NoError) { one.Add ("error", (Int32) e); list (one); continue; }
+		API_Element mask; ACAPI_ELEMENT_MASK_CLEAR (mask);
+		bool supported = true;
+		switch (el.header.type.typeID) {
+			case API_SlabID:
+				if (write) { ApplyVis (el.slab.visibilityCont, p); ApplyVis (el.slab.visibilityFill, p); el.slab.isAutoOnStoryVisibility = false;
+					CT_MASK_FULL (mask, API_SlabType, visibilityCont); CT_MASK_FULL (mask, API_SlabType, visibilityFill); ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, isAutoOnStoryVisibility); }
+				one.Add ("contour", VisToOS (el.slab.visibilityCont)); one.Add ("fill", VisToOS (el.slab.visibilityFill)); break;
+			case API_MeshID:
+				if (write) { ApplyVis (el.mesh.visibilityCont, p); ApplyVis (el.mesh.visibilityFill, p);
+					CT_MASK_FULL (mask, API_MeshType, visibilityCont); CT_MASK_FULL (mask, API_MeshType, visibilityFill); }
+				one.Add ("contour", VisToOS (el.mesh.visibilityCont)); one.Add ("fill", VisToOS (el.mesh.visibilityFill)); break;
+			case API_MorphID:
+				if (write) { ApplyVis (el.morph.showContour, p); ApplyVis (el.morph.showFill, p); el.morph.isAutoOnStoryVisibility = false;
+					CT_MASK_FULL (mask, API_MorphType, showContour); CT_MASK_FULL (mask, API_MorphType, showFill); ACAPI_ELEMENT_MASK_SET (mask, API_MorphType, isAutoOnStoryVisibility); }
+				if (write) { GS::UniString vd; if (p.Get ("viewDepth", vd)) {
+					el.morph.viewDepthLimitation = vd == "entire" ? API_EntireElement : (vd == "absolute" ? API_ToAbsoluteLimit : API_ToFloorPlanRange);
+					CT_MASK_FULL (mask, API_MorphType, viewDepthLimitation); } }
+				one.Add ("contour", VisToOS (el.morph.showContour)); one.Add ("fill", VisToOS (el.morph.showFill));
+				one.Add ("viewDepth", (Int32) el.morph.viewDepthLimitation); break;
+			case API_ObjectID:
+			case API_LampID:
+				if (write) { ApplyVis (el.object.visibility, p); el.object.isAutoOnStoryVisibility = false;
+					CT_MASK_FULL (mask, API_ObjectType, visibility); ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, isAutoOnStoryVisibility); }
+				one.Add ("visibility", VisToOS (el.object.visibility)); break;
+			case API_WallID:
+				if (write) { ApplyVis (el.wall.visibility, p); el.wall.isAutoOnStoryVisibility = false;
+					CT_MASK_FULL (mask, API_WallType, visibility); ACAPI_ELEMENT_MASK_SET (mask, API_WallType, isAutoOnStoryVisibility); }
+				one.Add ("visibility", VisToOS (el.wall.visibility)); break;
+			case API_ColumnID:
+				if (write) { ApplyVis (el.column.visibility, p); el.column.isAutoOnStoryVisibility = false;
+					CT_MASK_FULL (mask, API_ColumnType, visibility); ACAPI_ELEMENT_MASK_SET (mask, API_ColumnType, isAutoOnStoryVisibility); }
+				one.Add ("visibility", VisToOS (el.column.visibility)); break;
+			case API_BeamID:
+				if (write) { ApplyVis (el.beam.visibility, p); el.beam.isAutoOnStoryVisibility = false;
+					CT_MASK_FULL (mask, API_BeamType, visibility); ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, isAutoOnStoryVisibility); }
+				one.Add ("visibility", VisToOS (el.beam.visibility)); break;
+			default: supported = false; one.Add ("error", GS::UniString ("type not supported")); break;
+		}
+		if (write && supported) {
+			GSErrCode ce = NoError;
+			ACAPI_CallUndoableCommand ("Claude: Story visibility", [&] () -> GSErrCode { ce = ACAPI_Element_Change (&el, &mask, nullptr, 0, true); return ce; });
+			one.Add ("changed", ce == NoError);
+			if (ce != NoError) one.Add ("error", (Int32) ce);
+			API_Element chk {}; chk.header.guid = g;
+			if (ACAPI_Element_Get (&chk) == NoError) {
+				const API_StoryVisibility* v = nullptr;
+				switch (chk.header.type.typeID) {
+					case API_SlabID: v = &chk.slab.visibilityCont; break;
+					case API_MeshID: v = &chk.mesh.visibilityCont; break;
+					case API_MorphID: v = &chk.morph.showContour; break;
+					case API_ObjectID: case API_LampID: v = &chk.object.visibility; break;
+					case API_WallID: v = &chk.wall.visibility; break;
+					case API_ColumnID: v = &chk.column.visibility; break;
+					case API_BeamID: v = &chk.beam.visibility; break;
+					default: break;
+				}
+				if (v != nullptr) one.Add ("stored", VisToOS (*v));
+			}
+		}
+		list (one);
+	}
+	return r;
+}
+
+GS::ObjectState GetStoryVisibility (const GS::ObjectState& p) { return StoryVisibility (p, false); }
+GS::ObjectState SetStoryVisibility (const GS::ObjectState& p) { return StoryVisibility (p, true); }
+
 } // namespace v3

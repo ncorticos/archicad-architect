@@ -10,7 +10,7 @@ It is a companion to [Tapir](https://github.com/ENZYME-APD/tapir-archicad-automa
 
 | Folder | What |
 |---|---|
-| `addon/` | **ClaudeTools** Archicad add-on (C++, DevKit 30), laid out like GRAPHISOFT's [archicad-addon-cmake](https://github.com/GRAPHISOFT/archicad-addon-cmake) template; build tools as a git submodule. 50 JSON commands in the namespace `ClaudeTools`, called through the Archicad JSON API (`API.ExecuteAddOnCommand`). |
+| `addon/` | **ClaudeTools** Archicad add-on (C++, DevKit 30), laid out like GRAPHISOFT's [archicad-addon-cmake](https://github.com/GRAPHISOFT/archicad-addon-cmake) template; build tools as a git submodule. 52 JSON commands in the namespace `ClaudeTools`, called through the Archicad JSON API (`API.ExecuteAddOnCommand`). |
 | `mcp/` | **arquiteto-ndc** MCP server (Python, one file). One MCP tool per add-on command, read from the add-on source, plus `batch`. Keeps one connection to Archicad (~20 ms per call). |
 | `setup.py` | One-command setup for each user: your MDID, DevKit download, build, install, MCP entry. |
 | `client/ct.py` | Minimal command-line client: `python3 client/ct.py Ping '{}'`. |
@@ -33,7 +33,7 @@ You need: **Archicad 30**, **Python 3**, **git**, **CMake**, and **Xcode** (macO
    python3 setup.py --write-mcp-config
    ```
    (Windows: `py setup.py --write-mcp-config`.) Your answers are kept in `local.json`, which is never shared. Run single steps with `--only tools|mdid|build|install|mcp`; use your own DevKit with `--devkit <folder> --devkit-build <n>`.
-4. **Start Archicad**, open a project, then check: `python3 client/ct.py Ping '{}'` → it answers with the version and the 50 commands.
+4. **Start Archicad**, open a project, then check: `python3 client/ct.py Ping '{}'` → it answers with the version and the 52 commands.
 5. **Restart the Claude app.** The tools appear as `arquiteto-ndc`. In Claude Code, allow `mcp__arquiteto-ndc__*` and keep `SaveProject`, `SaveProjectAs` and `DeleteElements` on *ask* (`settings.json` → `permissions`).
 6. Copy `docs/CLAUDE.md.example` into your project folder as `CLAUDE.md`, fill in your project's data, and start Claude in that folder.
 
@@ -101,6 +101,8 @@ In sections, elevations and layouts pass `useFloorPlanDatabase: false` and `db: 
 | `SetDimensionNotes` | { dim:guid, notes:[{i, x, y}], db? }  -> moves the text of those dimension elements (fixed position) Moves dimension texts (fixed position). Pass useFloorPlanDatabase:false. Points bound to wall Openings are lost by the change: rebuild such dimensions with RebuildDimension instead. |
 | `SetDimensionWitness` | { db?, items:[{dim:guid, form?:int, val?:double, elems?:[{i, form?, val?}]}] } Sets witness-line form/length of each point (and the dimension default). One undo step per dimension. Stops at the first dimension whose number of points changes. Pass useFloorPlanDatabase:false. Witness form: 0 None, 1 Small, 2 Large (gap to element), 3 Fix (fixed length). For 8 mm on paper: form 3, val = 8*scale/1000 - 0.0935 (metres). Dimensions with points on section elements are refused (unchanged). |
 | `RebuildDimension` | { db?, dim:guid, points:[{px,py,bx,by,nx?,ny?,fixPos?,keepBase?:int}] } Re-creates the dimension with all its settings (first point as template) and the given points, then deletes the old one. keepBase = index of an existing point whose element link is kept; otherwise static. Pass useFloorPlanDatabase:false. Needs >= 2 points. Save the dimension's data first (GetDimensions) so it can be rebuilt again. |
+| `GetStoryVisibility` | ClaudeTools command. |
+| `SetStoryVisibility` | ClaudeTools command. |
 
 ## Golden rules (also in `docs/LESSONS.md`)
 
