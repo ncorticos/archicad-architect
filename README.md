@@ -61,11 +61,11 @@ In sections, elevations and layouts pass `useFloorPlanDatabase: false` and `db: 
 | `FlipOpenings` | { openings:[guid], flipSide:bool (mirror across wall axis, i.e. swing in/out), flipHinge:bool (mirror along wall, i.e. left/right) } or explicit values { reflected:bool, oSide:bool } |
 | `Rebuild` | { regenerate:bool }  Rebuild (or Rebuild & Regenerate) the front window |
 | `SetWallTextureAlign` | { walls:[guid], value:bool }  Wall "align texture to wall edges" |
-| `CreateTexts` | { items:[{x,y,text,layer,size(mm),pen,angle(rad),floor}] } |
+| `CreateTexts` | { items:[{x,y,text,layer,size(mm),pen,angle(rad),floor,just:"left"\|"center"\|"right",anchor:"LT"…"RB"}] } |
 | `CreateDimensions` | { items:[{points:[{x,y}...], refX, refY, dirX, dirY, layer, floor}] }  static linear dimensions |
 | `SetLayerInCombinations` | { layer:int, visibleIn:[combination names] }  -> layer visible in those, hidden in all others |
 | `MoveToLayer` | { elements:[guid], layer:int } |
-| `DeleteElements` | { elements:[guid] } |
+| `DeleteElements` | { elements:[guid] } → deleted, notFound, notDeleted (current window's database) |
 | `FarElements` | { maxDistance:m } -> elements in the floor plan whose bounds go beyond maxDistance from origin |
 | `GetDrawing` | { drawing:guid } -> placement data of a drawing on its layout (works in the layout database) |
 | `SetDrawingFrame` | { drawing:guid, xMin,yMin,xMax,yMax (layout coords, m), anchor? } -> clip drawing with rectangular frame |
@@ -87,7 +87,7 @@ In sections, elevations and layouts pass `useFloorPlanDatabase: false` and `db: 
 | `SetDrawingProps` | { drawing:guid, name, number, ratio, layoutDatabase } |
 | `SaveProject` | {} -> save the project Saves the project. Only with the user's explicit approval: pass user_approved:true. |
 | `GetElementInfo` | { elements:[guid] } -> header info: type, layer, floor, bounds |
-| `SetDrawOrder` | { elements:[guid], order:"back"\|"front"\|int } |
+| `SetDrawOrder` | { elements:[guid], order:"front"\|"back"\|"forward"\|"backward"\|"reset" } |
 | `FindElements` | { type:"Wall"\|..., layer?, floor?, select:bool } -> guids (and selects them if select) |
 | `CopyElementSettings` | { from:guid, to:[guid] } pick up the settings of one element and inject them into others of the same type (geometry kept) |
 | `GetRoof` | { roof:guid } -> roof data (class, level, thickness, plane angle, levels, eaves, pivot edge angles) |

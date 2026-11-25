@@ -240,9 +240,29 @@ GS::ObjectState TransformElements (const GS::ObjectState& p)
 	else if (op == "rotate") { double cx = Num (p, "cx", 0), cy = Num (p, "cy", 0), a = Num (p, "angle", 0);
 		ep.typeID = APIEdit_Rotate; ep.origC = { cx, cy }; ep.begC = { cx + 1, cy, 0 }; ep.endC = { cx + cos (a), cy + sin (a), 0 }; }
 	else if (op == "mirror") { ep.typeID = APIEdit_Mirror; ep.begC = { Num (p, "ax", 0), Num (p, "ay", 0), 0 }; ep.endC = { Num (p, "bx", 0), Num (p, "by", 1), 0 }; }
-	else return Err (APIERR_BADPARS, "op must be move|rotate|mirror");
+	else if (op == "stretch") { ep.typeID = APIEdit_Stretch; ep.begC = { 0, 0, 0 }; ep.endC = { Num (p, "dx", 0), Num (p, "dy", 0), 0 }; }
+	else return Err (APIERR_BADPARS, "op must be move|rotate|mirror|stretch");
+	// stretch: { op:"stretch", elements, marquee:{x0,y0,x1,y1}, dx, dy, multiStory?:true }
+	// Nodes inside the marquee move by (dx,dy), like Archicad's Stretch with a marquee.
+	bool marqueeSet = false;
+	if (op == "stretch") {
+		GS::ObjectState mq; if (!p.Get ("marquee", mq)) return Err (APIERR_BADPARS, "stretch needs marquee:{x0,y0,x1,y1}");
+		double x0 = Num (mq, "x0", 0), y0 = Num (mq, "y0", 0), x1 = Num (mq, "x1", 0), y1 = Num (mq, "y1", 0);
+		bool multi = true; p.Get ("multiStory", multi);
+		API_SelectionInfo si {};
+		si.typeID = API_MarqueePoly; si.multiStory = multi;
+		si.marquee.nCoords = 5;
+		si.marquee.coords = (API_Coord**) BMAllocateHandle (5 * sizeof (API_Coord), ALLOCATE_CLEAR, 0);
+		API_Coord* c = *si.marquee.coords;
+		c[0] = { x0, y0 }; c[1] = { x1, y0 }; c[2] = { x1, y1 }; c[3] = { x0, y1 }; c[4] = c[0];
+		GSErrCode me = ACAPI_Selection_SetMarquee (&si);
+		BMKillHandle ((GSHandle*) &si.marquee.coords);
+		if (me != NoError) return Err (me, "SetMarquee failed");
+		marqueeSet = true;
+	}
 	GSErrCode inner = NoError;
 	ACAPI_CallUndoableCommand ("Claude: Transform", [&] () -> GSErrCode { inner = ACAPI_Element_Edit (&n, ep); return inner; });
+	if (marqueeSet) { API_SelectionInfo none {}; none.typeID = API_SelEmpty; ACAPI_Selection_SetMarquee (&none); }
 	if (inner != NoError) return Err (inner, "Edit failed");
 	GS::Array<GS::UniString> out; for (const auto& x : n) out.Push (APIGuidToString (x.guid));
 	return GS::ObjectState ("elements", out);
@@ -364,7 +384,7 @@ GS::ObjectState Set3DCamera (const GS::ObjectState& p)
 	pi.u.persp.cameraZ = Num (p, "cameraZ", pi.u.persp.cameraZ); pi.u.persp.targetZ = Num (p, "targetZ", pi.u.persp.targetZ);
 	pi.u.persp.viewCone = Num (p, "viewCone", pi.u.persp.viewCone);
 	double dx = pi.u.persp.target.x - pi.u.persp.pos.x, dy = pi.u.persp.target.y - pi.u.persp.pos.y;
-	pi.u.persp.azimuth = atan2 (dy, dx) * 180.0 / 3.14159265358979323846; pi.u.persp.distance = sqrt (dx * dx + dy * dy);
+	pi.u.persp.azimuth = atan2 (dy, dx) * 180.0 / PI; pi.u.persp.distance = sqrt (dx * dx + dy * dy);
 	e = ACAPI_View_Change3DProjectionSets (&pi);
 	if (e != NoError) return Err (e, "Set projection failed");
 	return GS::ObjectState ("success", true);
@@ -419,21 +439,22 @@ GS::ObjectState GetElementInfo (const GS::ObjectState& p)
 // { elements:[guid], order:"back"|"front"|int }
 GS::ObjectState SetDrawOrder (const GS::ObjectState& p)
 {
+	// order: front | back | forward | backward | reset  (Edit > Display Order); acts in the current window's database
 	GS::UniString o ("back"); p.Get ("order", o);
-	char idx = (o == "front") ? 9 : (o == "back" ? 1 : (char) Num (p, "order", 1));
-	Int32 ok = 0, failed = 0; GSErrCode lastErr = NoError;
-	ACAPI_CallUndoableCommand ("Claude: Draw order", [&] () -> GSErrCode {
-		for (const auto& g : GuidList (p, "elements")) {
-			API_Element el {}; el.header.guid = g;
-			if (ACAPI_Element_Get (&el) != NoError) { ++failed; continue; }
-			API_Element mask; ACAPI_ELEMENT_MASK_CLEAR (mask); ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, drwIndex);
-			el.header.drwIndex = idx;
-			GSErrCode ce = ACAPI_Element_Change (&el, &mask, nullptr, 0, true);
-			if (ce == NoError) ++ok; else { ++failed; lastErr = ce; }
-		}
-		return NoError;
+	API_ToolCmdID cmd = APITool_SendToBack;
+	if (o == "front") cmd = APITool_BringToFront;
+	else if (o == "forward") cmd = APITool_BringForward;
+	else if (o == "backward") cmd = APITool_SendBackward;
+	else if (o == "reset") cmd = APITool_ResetOrder;
+	GS::Array<API_Guid> g = GuidList (p, "elements");
+	Int32 found = 0;
+	for (const auto& x : g) { API_Elem_Head h {}; h.guid = x; if (ACAPI_Element_GetHeader (&h) == NoError) ++found; }
+	GSErrCode err = NoError;
+	ACAPI_CallUndoableCommand ("Claude: Display order", [&] () -> GSErrCode {
+		err = ACAPI_Grouping_Tool (g, cmd, nullptr);
+		return err;
 	});
-	return GS::ObjectState ("changed", ok, "failed", failed, "lastError", (Int32) lastErr);
+	return GS::ObjectState ("changed", (err == NoError) ? found : 0, "failed", (Int32) g.GetSize () - ((err == NoError) ? found : 0), "lastError", (Int32) err);
 }
 
 static bool TypeFromName (const GS::UniString& n, API_ElemTypeID& t)

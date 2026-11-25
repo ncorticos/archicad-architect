@@ -376,6 +376,15 @@ GS::ObjectState CreateTexts (const GS::ObjectState& p)
 			el.text.angle = Num (it, "angle", 0);
 			el.text.anchor = APIAnc_MM;
 			el.text.just = APIJust_Center;
+			{
+				GS::UniString j, an;
+				if (it.Get ("just", j)) el.text.just = (j == "left") ? APIJust_Left : (j == "right" ? APIJust_Right : APIJust_Center);
+				if (it.Get ("anchor", an)) {
+					const char* names[] = { "LT", "MT", "RT", "LM", "MM", "RM", "LB", "MB", "RB" };
+					const API_AnchorID ids[] = { APIAnc_LT, APIAnc_MT, APIAnc_RT, APIAnc_LM, APIAnc_MM, APIAnc_RM, APIAnc_LB, APIAnc_MB, APIAnc_RB };
+					for (int k = 0; k < 9; ++k) if (an == names[k]) el.text.anchor = ids[k];
+				}
+			}
 			el.text.nonBreaking = true;
 			el.text.nLine = 1;
 			if (Num (it, "fillPen", 0) > 0) { el.text.usedFill = true; el.text.fillPen = (short) Num (it, "fillPen", 0); }
@@ -507,14 +516,20 @@ GS::ObjectState MoveToLayer (const GS::ObjectState& p)
 // { elements:[guid] }
 GS::ObjectState DeleteElements (const GS::ObjectState& p)
 {
-	GS::Array<API_Guid> g = GuidList (p, "elements");
+	// acts in the current window's database (or layoutDatabase); reports only elements that existed there
+	GS::Array<API_Guid> all = GuidList (p, "elements"), g;
+	for (const auto& x : all) { API_Elem_Head h {}; h.guid = x; if (ACAPI_Element_GetHeader (&h) == NoError) g.Push (x); }
 	GSErrCode inner = NoError;
-	ACAPI_CallUndoableCommand ("Claude: Delete elements", [&] () -> GSErrCode {
-		inner = ACAPI_Element_Delete (g);
-		return inner;
-	});
+	if (!g.IsEmpty ()) {
+		ACAPI_CallUndoableCommand ("Claude: Delete elements", [&] () -> GSErrCode {
+			inner = ACAPI_Element_Delete (g);
+			return inner;
+		});
+	}
 	if (inner != NoError) return Err (inner, "Delete failed");
-	return GS::ObjectState ("deleted", (Int32) g.GetSize ());
+	Int32 left = 0;
+	for (const auto& x : g) { API_Elem_Head h {}; h.guid = x; if (ACAPI_Element_GetHeader (&h) == NoError) ++left; }
+	return GS::ObjectState ("deleted", (Int32) g.GetSize () - left, "notFound", (Int32) (all.GetSize () - g.GetSize ()), "notDeleted", left);
 }
 
 // { maxDistance:m } -> elements in the floor plan whose bounds go beyond maxDistance from origin
@@ -698,7 +713,7 @@ GS::ObjectState SetTextBackground (const GS::ObjectState& p)
 // {} -> list of available commands
 GS::ObjectState Ping (const GS::ObjectState&)
 {
-	GS::ObjectState r ("addOn", GS::UniString ("ClaudeTools"), "version", GS::UniString ("2.5.1"));
+	GS::ObjectState r ("addOn", GS::UniString ("ClaudeTools"), "version", GS::UniString ("2.5.3"));
 	GS::Array<GS::UniString> cmds = { "Ping", "CreateSolidLinks", "RemoveSolidLinks", "GetSolidLinks",
 		"TrimElements", "RemoveTrim", "GetTrims", "FlipOpenings", "Rebuild", "SetWallTextureAlign",
 		"CreateTexts", "CreateDimensions", "SetLayerInCombinations", "MoveToLayer", "DeleteElements", "FarElements", "GetDrawing", "SetDrawingFrame", "ListPens", "CreateHatches", "SetTextBackground", "ZoomToElements", "SelectElements", "ShowIn3D", "SetElementProps", "GetPolygon", "SetMeshPointHeights", "TransformElements", "CreateLines", "CreateObject", "SetGDLParams", "Get3DCamera", "Set3DCamera", "SetDrawingProps", "SaveProject", "GetElementInfo", "SetDrawOrder", "FindElements", "CopyElementSettings", "GetRoof", "SetRoof", "SetPolygon", "SaveProjectAs", "RenderImage", "ListDatabases", "GetDimensions", "GetDrawnSegments", "SetDimensionNotes", "SetDimensionWitness", "RebuildDimension", "GetStoryVisibility", "SetStoryVisibility" };

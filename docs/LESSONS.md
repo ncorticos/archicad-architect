@@ -9,6 +9,7 @@ Notes from using an AI agent on a real Archicad 30 project (macOS) through the J
 - **Never save without approval.** The MCP server refuses `SaveProject`/`SaveProjectAs` unless `user_approved: true`; keep them on `ask` in the client's permissions too.
 - **Hidden layers**: their elements cannot be changed (the call fails or does nothing). Show the layer (Tapir `CreateLayers` with `overwriteExisting: true`), change, hide it again, in a `finally` block.
 - **The user may be working at the same time.** "Invalid program status (ongoing user input)" (4001) means a tool or dialog is active in Archicad: stop and ask the user to press Esc; don't batch while they draw.
+- **Locked layers**: `ACAPI_Element_Change` fails with "its layer is locked". Unlock with Tapir `CreateLayers` + `overwriteExisting: true` and relock in a `finally` — but pass `isHidden`, `isWireframe` and `intersectionGroupNr` explicitly: omitting them reset a layer to wireframe.
 
 ## Dimensions
 
@@ -27,18 +28,25 @@ Notes from using an AI agent on a real Archicad 30 project (macOS) through the J
 - **"It does not appear on the layout"**: check the layer combination of the *view* placed on the layout, not just the model. Get the view settings (Tapir `GetViewSettings` on the View Map items) and the combination (`GetLayerCombinations`); the layers are referenced by attribute GUID, map them with `GetAttributesByType`. Change one layer in a combination with `CreateLayerCombinations`, `overwriteExisting: true` and only that layer listed: the others keep their state. Our tank sat on an MEP layer hidden in the drawing's combination.
 - Identify the combination a layout really uses by what is visible on it (e.g. a layer that is shown there and hidden in the other candidate), before changing anything.
 - After model changes, a drawing on a layout may show blank until updated: Tapir `UpdateDrawings`.
+- **Windows vanish from the plan**: check *Floor Plan Cut Plane* (Tapir `GetProjectPreferences`). A top limit equal to the cut height (e.g. "story 0 + 1.10") hides every window with a sill above it. The cut plane is **stored in each view**: opening a view (e.g. *Open Source View* from a layout drawing) applies its cut plane to the project. Fix the preference, then *Redefine with Current Window Settings* on that view. To find the trigger, poll the preference and the current window every second while the user repeats the steps.
+- A layout drawing whose source view was deleted keeps its frame and title but shows blank; its `navigatorItemId` no longer resolves.
 
 ## Changing geometry
 
 - `ACAPI_Element_Edit` with `APIEdit_Stretch` did nothing on whole-element neigs, nor on the selection with a marquee set through the API (Archicad 30): no error, no change. The DevKit example stretches *node* neigs picked by clicking.
 - What works without user input: Tapir `ModifyMorphs` with a new `body` (read it with `GetDetailsOfElements`, move the vertices in world coordinates = origin + local, keep faces/surfaces), `ModifySlabs` with a new `polygonOutline`, `SetDetailsOfElements` for wall begin/end points, and Tapir `SetGDLParametersOfElements` for an object's A/B (ClaudeTools `SetGDLParams` ignores A and B, which are element fields). One rule applied to every point (e.g. x ≤ a → x−dx) reproduces a marquee stretch exactly.
 - Save the geometry of everything you touch first (JSON), test on one element, check the bounding boxes against the expected numbers, then run the rest.
+- **Moving in Z**: a wall's `bottomOffset`/`zCoordinate` in `SetDetailsOfElements` returned success and did nothing; Tapir `MoveElements` with a z vector works. Slabs: `ModifySlabs` → `zCoordinate`; roofs: `ModifyRoofs` → `level`.
+- **Solid element operations**: list them before moving or replacing anything (ClaudeTools `GetSolidLinks {elements}`). An operator moved into the target's volume also hides elements that sit inside it (flush door panels vanished inside a niche cutter: keep them just outside the cutter).
+- **Editing a custom GDL object**: Tapir `SetLibraryPartScripts` refused copies even in a writable local library ("not editable"), and `ChangeLibraryPartOfElements` did not find the copy. What worked: `CopyLibraryParts` to a local library folder, `LP_XMLConverter libpart2xml` (inside `Archicad 30.app/Contents/MacOS/`), replace the `<Script_3D>` CDATA, `xml2libpart`, `ReloadLibraries`; place a new instance at the same origin/angle/layer, recreate its solid links, delete the old one.
 
 ## Texts and notes
 
-- `CreateTexts` (ClaudeTools) places the text by its **centre** and in the tool's default style (it can be bold). Fix with Tapir `ModifyTexts`: `style: {bold:false, anchor:"LeftBottom", height}` and `coordinate`.
+- `CreateTexts` (ClaudeTools) places the text by its **centre** unless you pass `anchor` ("LT"…"RB") and `just` (2.5.3), and in the tool's default style (it can be bold). Fix the style with Tapir `ModifyTexts`: `style: {bold:false, height}`.
 - Keep at least one text height between stacked texts and ~0.6 text heights from any line. Architects notice cramped text immediately.
 - Terrain/path **meshes** come back from `GetDrawnSegments` as hundreds of fill triangles that are not visible lines; vegetation (2D trees) *is* visible. Don't skip whole layer classes blindly: filter by element and look at a capture.
+- **Layouts**: ClaudeTools `CreateLines` writes to the floor plan even with a layout open, and `DeleteElements` cannot delete layout elements. Use Tapir `CopyElementsToDatabase` (source/target database), then `ChangeWindow` to the layout and `SetDetailsOfElements` to place them; delete with Tapir `DeleteElements`.
+- Archicad **Guide Lines** (the orange dashed ones) are not elements: the API cannot read or create them, so a "selection" of them comes back empty. Draw real lines on a dedicated layer instead and hide it before publishing.
 
 ## Views and windows
 
