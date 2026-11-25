@@ -39,6 +39,12 @@ You need: **Archicad 30**, **Python 3**, **git**, **CMake**, and **Xcode** (macO
 
 **Do it by hand instead:** `python3 addon/Tools/BuildAddOn.py -c addon/config.json -v 30` (after writing `addon/RFIX/ClaudeToolsFix.grc` from the `.in` template), then copy `addon/Build/ClaudeTools/30/INT/RelWithDebInfo/ClaudeTools.bundle` (or `.apx`) into the Add-Ons folder. Claude Code CLI: `claude mcp add arquiteto-ndc -- uv run --script /path/to/archicad-architect/mcp/server.py`.
 
+**Scripts in `scripts/`** use the official `archicad` package. Give them their own environment with a recent Python (3.11+; the system Python on macOS is 3.9):
+```bash
+python3.14 -m venv .venv && .venv/bin/pip install archicad==30.3000
+```
+and run them with `.venv/bin/python` (or put that path on their first line and `chmod +x`). Speed barely changes — the time is spent inside Archicad — but new libraries (the `mcp` package needs 3.10+) work.
+
 Environment variables of the server: `CLAUDETOOLS_PORT` (default 19723), `CLAUDETOOLS_HOST`, `CLAUDETOOLS_TIMEOUT`, `CLAUDETOOLS_SRC`.
 
 ## Calling a command

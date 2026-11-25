@@ -30,6 +30,8 @@ Notes from using an AI agent on a real Archicad 30 project (macOS) through the J
 - After model changes, a drawing on a layout may show blank until updated: Tapir `UpdateDrawings`.
 - **Windows vanish from the plan**: check *Floor Plan Cut Plane* (Tapir `GetProjectPreferences`). A top limit equal to the cut height (e.g. "story 0 + 1.10") hides every window with a sill above it. The cut plane is **stored in each view**: opening a view (e.g. *Open Source View* from a layout drawing) applies its cut plane to the project. Fix the preference, then *Redefine with Current Window Settings* on that view. To find the trigger, poll the preference and the current window every second while the user repeats the steps.
 - A layout drawing whose source view was deleted keeps its frame and title but shows blank; its `navigatorItemId` no longer resolves.
+- **Layouts follow the current layer state.** Drawings, title marks and lines placed on a layout disappear when a layer combination hides their layer — ours sat on the survey layer, and every sheet went blank. Put all layout elements on one layer that is visible in every combination (ClaudeTools `SetLayerInCombinations` with all combination names). Tapir `SetDetailsOfElements` with `details.layerIndex` moves layout elements (after `ChangeWindow` to the layout; show/unlock the old layer first); ClaudeTools `MoveToLayer` failed on them.
+- Tapir `GetDatabaseIdFromNavigatorItemId` fails for the `navigatorItemId` of *every* layout drawing, even ones that display fine: it is not a test for a deleted source view.
 
 ## Changing geometry
 
@@ -63,6 +65,9 @@ Notes from using an AI agent on a real Archicad 30 project (macOS) through the J
 - **Claude Code sandbox**: calls to `localhost:19723` from sandboxed shell commands fail with "Operation not permitted". The MCP server runs outside the sandbox; for scripts add the command to `sandbox.excludedCommands` (new session needed).
 - **Add-on MDID**: Archicad only loads add-ons with the MDID of the registered developer. Each user builds with their own.
 - **Building**: plan add-on changes in bundles: every build needs Archicad closed and restarted.
+- Python bindings: `GetElementsByType` rejects some types (`Label`) and returned no `Zone` here; Tapir `GetAllElements` + `GetDetailsOfElements` and filtering by `type` always works.
+- Creating an element with an `id` on a hidden layer failed ("Failed to set the id"); create without `id`.
+- `SetZoom` keeps the window's aspect ratio: read back the returned zoom box before mapping screen pixels to model coordinates.
 
 ## Prompts that worked
 
